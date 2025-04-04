@@ -1,4 +1,9 @@
-![image](images/microchip.jpg) 
+<picture>
+    <source media="(prefers-color-scheme: dark)" srcset="images/microchip_logo_white_red.png">
+    <source media="(prefers-color-scheme: light)" srcset="images/microchip_logo_black_red.png">
+    <img alt="Microchip Logo." src="images/microchip_logo_black_red.png">
+</picture>
+
 ## Sensorless FOC using PLL Estimator and Single-Shunt Current Reconstruction Algorithm for PMSM with Fan Load: Automotive Cooling Fan Reference Design
 
 
@@ -8,6 +13,8 @@ This document describes the setup requirements for driving a Permanent Magnet Sy
 For details about PLL estimator, refer to Microchip application note [AN1292](https://ww1.microchip.com/downloads/aemDocuments/documents/OTH/ApplicationNotes/ApplicationNotes/01292A.pdf) “Sensorless Field Oriented Control (FOC) for a Permanent Magnet Synchronous Motor (PMSM) Using a PLL Estimator and Field Weakening (FW)”
 
 For details about Single-Shunt Current Reconstruction algorithm, refer to Microchip application note [AN1299](https://ww1.microchip.com/downloads/aemDocuments/documents/MCU16/ApplicationNotes/ApplicationNotes/01299A.pdf) "Single-Shunt Three-Phase Current Reconstruction Algorithm for Sensorless FOC of a PMSM".
+
+Enhance your embedded applications with Microchip's high-performance [dsPIC® Digital Signal Controllers (DSCs)](https://www.microchip.com/en-us/products/microcontrollers-and-microprocessors/dspic-dscs). Visit our [Motor Control and Drive page](https://www.microchip.com/en-us/solutions/technologies/motor-control-and-drive) to stay updated on the latest motor control solutions from Microchip.
 </br>
 
 ## 2. SUGGESTED DEMONSTRATION REQUIREMENTS
@@ -21,10 +28,10 @@ To clone or download this application firmware on GitHub,
 >In this document, hereinafter this firmware package is referred as **firmware.**
 ### 2.2 Software Tools Used for Testing the firmware
 
-- MPLAB® X IDE **v6.20** 
+- MPLAB® X IDE **v6.25** 
 - Device Family Pack (DFP): **dsPIC33CD-MC_DFP v1.2.127**
-- PICkit™  Tool Pack : **PICkit4_TP v2.6.2088**
-- MPLAB® XC-DSC Compiler **v3.10**
+- PICkit™  Tool Pack : **PICkit4_TP v2.8.2226**
+- MPLAB® XC-DSC Compiler **v3.21**
 - MPLAB® X IDE Plugin: **X2C-Scope v1.7.0**
 - LIN Serial Analyzer Application: **v3.0.0** 
 > **Note:** </br>
@@ -123,14 +130,14 @@ Follow the below instructions, step by step, to set up the motor control demo ap
 >For additional information, refer to Microchip application note **[AN1299](https://ww1.microchip.com/downloads/aemDocuments/documents/MCU16/ApplicationNotes/ApplicationNotes/01299A.pdf), “Single-Shunt Three-Phase Current Reconstruction Algorithm for Sensorless FOC of a PMSM.”**
 
 
-4. Right-click on the project **pmsm.X** and select **Properties** to open its **Project Properties** Dialog. Click the **Conf:[default]** category to reveal the general project configuration information. The development tools used for testing the firmware are listed in section [2.2 Software Tools Used for Testing the firmware.](#22-software-tools-used-for-testing-the-firmware)
+5. Right-click on the project **pmsm.X** and select **Properties** to open its **Project Properties** Dialog. Click the **Conf:[default]** category to reveal the general project configuration information. The development tools used for testing the firmware are listed in section [2.2 Software Tools Used for Testing the firmware.](#22-software-tools-used-for-testing-the-firmware)
 
      In the **Conf:[default]** category window: 
      - Ensure the selected **Device** is **dsPIC33CDVL64MC106.**
      - Select the **Connected Hardware Tool** to be used for programming and debugging. 
      - Select the specific Device Family Pack (DFP) from the available list of **Packs.** In this case, **dsPIC33CD-MC_DFP 1.2.127** is selected. 
      - Select the specific **Compiler Toolchain** from the available list of **XC-DSC** compilers. 
-     In this case, **XC-DSC(v3.10)** is selected.
+     In this case, **XC-DSC(v3.21)** is selected.
      - After selecting Hardware Tool and Compiler Toolchain, Device Pack, click the button **Apply**
 
      Please ensure that the selected MPLAB® XC-DSC Compiler and Device Pack support the device configured in the firmware
@@ -138,7 +145,7 @@ Follow the below instructions, step by step, to set up the motor control demo ap
      <p align="left">
      <img  src="images/projectpropertiessettings.jpg" width="600"></p>
 
-5. Ensure that the checkbox **Load symbols when programming or building for production (slows process)** is checked under the **Loading** category of the **Project Properties** window.       
+6. Ensure that the checkbox **Load symbols when programming or building for production (slows process)** is checked under the **Loading** category of the **Project Properties** window.       
         
       <p align="left">
       <img  src="images/loadvariables.png" width="600"></p>
@@ -152,7 +159,7 @@ Follow the below instructions, step by step, to set up the motor control demo ap
            
       <p align="left">
       <img  src="images/embedded_legacy.png" width="600"></p>
-6. To build the project (in this case, **pmsm.X**) and program the device dsPIC33AK128MC106, click **Make and Program Device Main project** on the toolbar
+7. To build the project (in this case, **pmsm.X**) and program the device dsPIC33CDVL64MC106, click **Make and Program Device Main project** on the toolbar
     <p align="left">
     <img  src="images/deviceprogramming.png" width="600"></p>
   
@@ -166,7 +173,7 @@ The firmware is set to operate the motor using LIN communication by default. The
 ### 5.3.1 Setting up the LIN Serial Analyzer tool
 
 Follow the below instructions, step by step, to set up the LIN serial analyzer tool:
-1. Ensure the firmware is configured as described under section [5.2 Firmware Setup](#52-firmware-setup) by following steps 1 through 6.
+1. Ensure the firmware is configured as described under section [5.2 Firmware Setup](#52-firmware-setup) by following steps 1 through 7.
 
 2. Make sure the LIN Serial Analyzer [(APGDT001)](https://www.microchip.com/en-us/development-tool/apgdt001) is connected between the **connector J4** on the board and the Host PC.
 

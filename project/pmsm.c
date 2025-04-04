@@ -48,7 +48,7 @@
 #include "windmill.h"
 
 UGF_T uGF;
-uint8_t motorFaultCode;
+uint8_t motorFaultCode,runCmdMC1,runCmdFlag;
 int16_t Q15_Speed_Command, Speed_Command_RPM;
 
 #ifdef LIN_CONTROL
@@ -96,6 +96,7 @@ MCAPP_MEASURE_T measureInputs;
 uint16_t loadStartReadyCheckFlag = 0;
 int16_t Actual_Speed_RPM;
 
+void FanControlRoutine(void);
 void InitControlParameters(void);
 void DoControl( void );
 void CalculateParkAngle(void);
@@ -164,79 +165,118 @@ int main ( void )
             
             DiagnosticsStepMain();
             BoardService();
-            
-#ifdef LIN_CONTROL
-            if (LIN_TxFrameRequested(&lin)) 
-            {
-                uint8_t byte1 = motorFaultCode;
-                uint8_t byte2 = (uint8_t)uGF.Word;
-                uint8_t byte3 = (uint8_t)(Actual_Speed_RPM >> 8);
-                uint8_t byte4 = (uint8_t)Actual_Speed_RPM;
-                LIN_TxQueuePush(&lin, byte1);
-                LIN_TxQueuePush(&lin, byte2);
-                LIN_TxQueuePush(&lin, byte3);
-                LIN_TxQueuePush(&lin, byte4);
-            }
-            
-            LIN_ApplicationStepMain(&lin);
-            
-            if (LIN_RxFrameReady(&lin)) 
-            {
-                /* We are always expecting 4 bytes */
-                uint8_t byte1 = LIN_RxQueuePop(&lin);
-                uint8_t byte2 = LIN_RxQueuePop(&lin); 
-                uint8_t byte3 = LIN_RxQueuePop(&lin); 
-                uint8_t byte4 = LIN_RxQueuePop(&lin);
-                LIN_Start_Stop_Command = (byte1 << 8) | byte2;
-                Speed_Command_RPM = (byte3 << 8) | byte4;
-            }
-            
-            if(LIN_Start_Stop_Command == LIN_START_COMMAND)
-            {
-                if (uGF.bits.RunMotor == 0)
-                {
-                    uGF.bits.RunMotor = 1;
-                }
-                if(uGF.bits.StopCommand == true)
-                {
-                    uGF.bits.StopCommand = false; 
-                }
-            } 
-            else if (LIN_Start_Stop_Command == LIN_STOP_COMMAND)
-            {
-                if (uGF.bits.RunMotor == 1)
-                {
-                    uGF.bits.StopCommand = true;                   
-                }
-            }
-#else
-            if(X2C_Start_Stop_Command)
-            {
-                if(uGF.bits.RunMotor == true)
-                {
-                    if(uGF.bits.StopCommand == true)
-                    {
-                       uGF.bits.StopCommand = false; 
-                    }
-                    else
-                    {
-                        uGF.bits.StopCommand = true;
-                    }
-                }
-                else
-                {
-                    ResetParmeters();
-                    uGF.bits.RunMotor = true;  
-                }
-                X2C_Start_Stop_Command = false;
-            }
-#endif
-
+            /* Fan control input routine */
+            FanControlRoutine();
         }
 
     } // End of Main loop
     // should never get here
     while(1){}
+}
+// *****************************************************************************
+/* Function:
+    FanControlRoutine()
+
+  Summary:
+    This function to handle fan control inputs.  
+
+  Description:
+    Motor start and stop commands through LIN bus and X2C scope.
+
+  Precondition:
+    None.
+
+  Parameters:
+    None
+
+  Returns:
+    None.
+
+  Remarks:
+    None.
+ */
+void FanControlRoutine(void)
+{
+/* If control input is from LIN */    
+#ifdef LIN_CONTROL
+    if (LIN_TxFrameRequested(&lin)) 
+    {
+        uint8_t byte1 = motorFaultCode;
+        uint8_t byte2 = (uint8_t)uGF.Word;
+        uint8_t byte3 = (uint8_t)(Actual_Speed_RPM >> 8);
+        uint8_t byte4 = (uint8_t)Actual_Speed_RPM;
+        LIN_TxQueuePush(&lin, byte1);
+        LIN_TxQueuePush(&lin, byte2);
+        LIN_TxQueuePush(&lin, byte3);
+        LIN_TxQueuePush(&lin, byte4);
+    }
+
+    LIN_ApplicationStepMain(&lin);
+
+    if (LIN_RxFrameReady(&lin)) 
+    {
+        /* We are always expecting 4 bytes */
+        uint8_t byte1 = LIN_RxQueuePop(&lin);
+        uint8_t byte2 = LIN_RxQueuePop(&lin); 
+        uint8_t byte3 = LIN_RxQueuePop(&lin); 
+        uint8_t byte4 = LIN_RxQueuePop(&lin);
+        LIN_Start_Stop_Command = (byte1 << 8) | byte2;
+        Speed_Command_RPM = (byte3 << 8) | byte4;
+    }
+
+    if(LIN_Start_Stop_Command == LIN_START_COMMAND)
+    {
+        /* Command Flag */
+        runCmdFlag = 1;
+        /* Start motor */
+        runCmdMC1 = 1;
+    } 
+    else if (LIN_Start_Stop_Command == LIN_STOP_COMMAND)
+    {
+        /* Command Flag */
+        runCmdFlag = 1;
+        /* Stop motor */
+        runCmdMC1 = 0;
+
+    }
+#else
+/* If control input is from X2C */
+    if(X2C_Start_Stop_Command)
+    {
+        /* Command Flag */
+        runCmdFlag = 1;
+        if (runCmdMC1 == 0)
+        {
+            /* Start motor */
+            runCmdMC1 = 1;
+        }
+        else
+        {
+            /* Stop motor */
+            runCmdMC1 = 0;
+        }
+        X2C_Start_Stop_Command = false;
+    }
+#endif
+    /* Command to start or stop the motor */
+    if(runCmdFlag == 1)
+    {
+        /* Start motor */
+        if(runCmdMC1 == 1)
+        {
+            uGF.bits.RunMotor = 1;
+            if(uGF.bits.StopCmdFlag == true)
+            {
+                uGF.bits.StopCmdFlag = false; 
+            }
+        }
+        /* Stop the motor */
+        else
+        {
+            uGF.bits.StopCmdFlag = true;
+        }
+        runCmdFlag = 0;
+    }
 }
 // *****************************************************************************
 /* Function:
@@ -303,7 +343,7 @@ void ResetParmeters(void)
     /* Change mode */
     uGF.bits.ChangeMode = 1;
     /* Stop Command*/
-    uGF.bits.StopCommand = 0;
+    uGF.bits.StopCmdFlag = 0;
     
     loadStartReadyCheckFlag = 0;
     
@@ -408,6 +448,15 @@ void DoControl( void )
     else
     /* Closed Loop Vector Control */
     {
+        if(Speed_Command_RPM >= MAXIMUM_SPEED_RPM)
+        {
+            Speed_Command_RPM = MAXIMUM_SPEED_RPM;
+        }
+        if(Speed_Command_RPM <= END_SPEED_RPM)
+        {
+            Speed_Command_RPM = END_SPEED_RPM;
+        }
+        Q15_Speed_Command = NORM_VALUE(Speed_Command_RPM,MC1_PEAK_SPEED_RPM);
         ctrlParm.qtargetSpeed = Q15_Speed_Command;
         if(ctrlParm.speedRampCount < SPEEDREFRAMP_COUNT)
         {
@@ -529,7 +578,7 @@ void DoControl( void )
     None.
  */
 void __attribute__((__interrupt__,no_auto_psv)) _ADCInterrupt()
-{  
+{ 
 #ifdef SINGLE_SHUNT 
     if(IFS4bits.PWM1IF ==1)
     {
@@ -567,11 +616,10 @@ void __attribute__((__interrupt__,no_auto_psv)) _ADCInterrupt()
         break;  
     }
 #endif
-    if(uGF.bits.RunMotor)
+    
+    if(singleShuntParam.adcSamplePoint == 0)
     {
-        
-         
-        if(singleShuntParam.adcSamplePoint == 0)
+        if(uGF.bits.RunMotor)
         {
             measureInputs.current.Ia = ADCBUF_INV_A_IPHASE1;
             measureInputs.current.Ib = ADCBUF_INV_A_IPHASE2;
@@ -588,10 +636,10 @@ void __attribute__((__interrupt__,no_auto_psv)) _ADCInterrupt()
             iabc.a = measureInputs.current.Ia;
             iabc.b = measureInputs.current.Ib;
 #endif
-        if (loadStartReadyCheckFlag == 0)
+            if(loadStartReadyCheckFlag == 0)
             {
                 HAL_MC1MotorInputsRead(&measureInputs);
-                
+
                 MCAPP_FanStateMachine(pFan);
 
                 if(MCAPP_IsFanReadyToStart(pFan))
@@ -604,19 +652,20 @@ void __attribute__((__interrupt__,no_auto_psv)) _ADCInterrupt()
                     loadStartReadyCheckFlag = 1;
                 }
             }
-        else
+            else
             {   
-                /*Motor deceleration control while stopping*/
-                if(uGF.bits.StopCommand == 1)
+                /*Motor deceleration control while stopping
+                  It allows restarting the motor */
+                if(uGF.bits.StopCmdFlag == 1)
                 {
                     Speed_Command_RPM = END_SPEED_RPM;
                     if(estimator.qVelEstim < (Q15_END_SPEED_RPM <<1))
                     {
-                        uGF.bits.StopCommand = 0;
+                        uGF.bits.StopCmdFlag = 0;
                         motorStopData.stopDelayCount = 0;
                         ResetParmeters();
                     }                   
-                }
+                }            
                 /* Calculate qId,qIq from qSin,qCos,qIa,qIb */
                 MC_TransformClarke_Assembly(&iabc,&ialphabeta);
                 MC_TransformPark_Assembly(&ialphabeta,&sincosTheta,&idq);
@@ -651,64 +700,49 @@ void __attribute__((__interrupt__,no_auto_psv)) _ADCInterrupt()
                 MC_CalculateSpaceVectorPhaseShifted_Assembly(&vabc,pwmPeriod,
                                                         &pwmDutycycle);
                 PWMDutyCycleSet(&pwmDutycycle);
-#endif
-            }    
-        }
-    }
-    else
-    {
-        PWM_TRIGA = ADC_SAMPLING_POINT;
-#ifdef SINGLE_SHUNT
-        PWM_TRIGB = LOOPTIME_TCY>>2;
-        PWM_TRIGC = LOOPTIME_TCY>>1;
-        singleShuntParam.pwmDutycycle1.dutycycle3 = MIN_DUTY;
-        singleShuntParam.pwmDutycycle1.dutycycle2 = MIN_DUTY;
-        singleShuntParam.pwmDutycycle1.dutycycle1 = MIN_DUTY;
-        singleShuntParam.pwmDutycycle2.dutycycle3 = MIN_DUTY;
-        singleShuntParam.pwmDutycycle2.dutycycle2 = MIN_DUTY;
-        singleShuntParam.pwmDutycycle2.dutycycle1 = MIN_DUTY;
-        PWMDutyCycleSetDualEdge(&singleShuntParam.pwmDutycycle1,
-                &singleShuntParam.pwmDutycycle2);
-#else
-        pwmDutycycle.dutycycle3 = MIN_DUTY;
-        pwmDutycycle.dutycycle2 = MIN_DUTY;
-        pwmDutycycle.dutycycle1 = MIN_DUTY;
-        PWMDutyCycleSet(&pwmDutycycle);
-#endif
-
-    } 
-    
-    if(singleShuntParam.adcSamplePoint == 0)
-    {
-        if(uGF.bits.RunMotor == 0)
-        {
-            measureInputs.current.Ia = ADCBUF_INV_A_IPHASE1;
-            measureInputs.current.Ib = ADCBUF_INV_A_IPHASE2; 
-            measureInputs.current.Ibus = ADCBUF_INV_A_IBUS;
-        }
-        if(MCAPP_MeasureCurrentOffsetStatus(&measureInputs) == 0)
-        {
-            MCAPP_MeasureCurrentOffset(&measureInputs);
+#endif      
+            }
         }
         else
         {
+            PWM_TRIGA = ADC_SAMPLING_POINT;
+#ifdef SINGLE_SHUNT
+            PWM_TRIGB = LOOPTIME_TCY>>2;
+            PWM_TRIGC = LOOPTIME_TCY>>1;
+            singleShuntParam.pwmDutycycle1.dutycycle3 = MIN_DUTY;
+            singleShuntParam.pwmDutycycle1.dutycycle2 = MIN_DUTY;
+            singleShuntParam.pwmDutycycle1.dutycycle1 = MIN_DUTY;
+            singleShuntParam.pwmDutycycle2.dutycycle3 = MIN_DUTY;
+            singleShuntParam.pwmDutycycle2.dutycycle2 = MIN_DUTY;
+            singleShuntParam.pwmDutycycle2.dutycycle1 = MIN_DUTY;
+            PWMDutyCycleSetDualEdge(&singleShuntParam.pwmDutycycle1,
+                    &singleShuntParam.pwmDutycycle2);
+#else
+            pwmDutycycle.dutycycle3 = MIN_DUTY;
+            pwmDutycycle.dutycycle2 = MIN_DUTY;
+            pwmDutycycle.dutycycle1 = MIN_DUTY;
+            PWMDutyCycleSet(&pwmDutycycle);     
+#endif
+            measureInputs.current.Ia = ADCBUF_INV_A_IPHASE1;
+            measureInputs.current.Ib = ADCBUF_INV_A_IPHASE2; 
+            measureInputs.current.Ibus = ADCBUF_INV_A_IBUS;
+        
+            if(MCAPP_MeasureCurrentOffsetStatus(&measureInputs) == 0)
+            {
+                MCAPP_MeasureCurrentOffset(&measureInputs);
+            }
+        }
+        
+        if(MCAPP_MeasureCurrentOffsetStatus(&measureInputs) == 1)
+        {
             BoardServiceStepIsr(); 
         }
-
-        if(Speed_Command_RPM >= MAXIMUM_SPEED_RPM)
-        {
-            Speed_Command_RPM = MAXIMUM_SPEED_RPM;
-        }
-        if(Speed_Command_RPM <= END_SPEED_RPM)
-        {
-            Speed_Command_RPM = END_SPEED_RPM;
-        }
-        Q15_Speed_Command = NORM_VALUE(Speed_Command_RPM,MC1_PEAK_SPEED_RPM);
+        
         measureInputs.dcBusVoltage = (int16_t)( ADCBUF_VBUS_A);
                
         DiagnosticsStepIsr();
     }
-
+    
     /* Read ADC Buffet to Clear Flag */
 	adcDataBuffer = ClearADCIF_ReadADCBUF();
     ClearADCIF();   
