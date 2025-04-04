@@ -176,7 +176,7 @@ minimum value accepted */
  closed loop functioning normally this value should not be modified, but in 
  case of fine tuning of the transition, depending on the load or the 
  rotor moment of inertia */
-#define INITOFFSET_TRANS_OPEN_CLSD  0
+#define INITOFFSET_TRANS_OPEN_CLSD  0x2000
 /* motor speed down from full speed to openloop during stop command
 PWM_FREQUENCY * closedloop ramp time (in secs) */    
 #define STOPDELALYCOUNTMAX  (uint32_t)(120000)  

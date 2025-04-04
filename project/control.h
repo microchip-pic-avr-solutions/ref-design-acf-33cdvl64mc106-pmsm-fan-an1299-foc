@@ -109,8 +109,8 @@ typedef union
         unsigned ChangeMode:1;
         /* Speed doubled indication */
         unsigned ChangeSpeed:1;
-        /* Stop Command*/
-        unsigned StopCommand:1;
+        /* Indicates motor stopping sequence*/
+        unsigned StopCmdFlag:1;
        /* Unused bits */
         unsigned    :11;
     } bits;
